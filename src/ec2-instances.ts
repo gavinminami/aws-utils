@@ -112,45 +112,58 @@ async function getInstanceDiskStorage(
 }
 
 /**
- * Get EC2 instances from a specific region
+ * Get EC2 instances from a specific region (with pagination support)
  */
 async function getInstancesInRegion(region: string): Promise<EC2InstanceInfo[]> {
   const ec2Client = new EC2Client({ region });
   const instances: EC2InstanceInfo[] = [];
 
   try {
-    const command = new DescribeInstancesCommand({});
-    const response = await ec2Client.send(command);
+    let nextToken: string | undefined;
 
-    if (!response.Reservations) {
-      return instances;
-    }
+    // Paginate through all results
+    do {
+      const command = new DescribeInstancesCommand({
+        NextToken: nextToken,
+        MaxResults: 1000, // Maximum allowed by AWS
+      });
 
-    // Process all instances in all reservations
-    for (const reservation of response.Reservations) {
-      if (!reservation.Instances) continue;
+      const response = await ec2Client.send(command);
 
-      for (const instance of reservation.Instances) {
-        const instanceType = instance.InstanceType || 'unknown';
-        const specs = await getInstanceSpecs(ec2Client, instanceType);
-        const diskStorageGB = await getInstanceDiskStorage(
-          ec2Client,
-          instance.InstanceId || ''
-        );
-
-        instances.push({
-          instanceId: instance.InstanceId || 'N/A',
-          name: getInstanceName(instance),
-          region,
-          instanceType,
-          cpuCount: specs.cpus,
-          cpuArchitecture: instance.Architecture || 'unknown',
-          ramGB: specs.ramGB,
-          diskStorageGB,
-          state: instance.State?.Name || 'unknown',
-        });
+      if (!response.Reservations) {
+        break;
       }
-    }
+
+      // Process all instances in all reservations
+      for (const reservation of response.Reservations) {
+        if (!reservation.Instances) continue;
+
+        for (const instance of reservation.Instances) {
+          const instanceType = instance.InstanceType || 'unknown';
+          const specs = await getInstanceSpecs(ec2Client, instanceType);
+          const diskStorageGB = await getInstanceDiskStorage(
+            ec2Client,
+            instance.InstanceId || ''
+          );
+
+          instances.push({
+            instanceId: instance.InstanceId || 'N/A',
+            name: getInstanceName(instance),
+            region,
+            instanceType,
+            cpuCount: specs.cpus,
+            cpuArchitecture: instance.Architecture || 'unknown',
+            ramGB: specs.ramGB,
+            diskStorageGB,
+            state: instance.State?.Name || 'unknown',
+          });
+        }
+      }
+
+      // Get the next token for pagination
+      nextToken = response.NextToken;
+    } while (nextToken);
+
   } catch (error) {
     console.error(`Error fetching instances in region ${region}:`, error);
   }

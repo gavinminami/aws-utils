@@ -91,6 +91,25 @@ async function main() {
         lines.push(`  ${state}: ${count}`);
       }
 
+      // Count by instance type
+      const instanceTypeCount = instances.reduce((acc, instance) => {
+        acc[instance.instanceType] = (acc[instance.instanceType] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      lines.push('\nInstances by type:');
+      // Sort by count (descending) then by instance type name
+      const sortedTypes = Object.entries(instanceTypeCount).sort((a, b) => {
+        if (b[1] !== a[1]) {
+          return b[1] - a[1]; // Sort by count descending
+        }
+        return a[0].localeCompare(b[0]); // Then by name
+      });
+
+      for (const [type, count] of sortedTypes) {
+        lines.push(`  ${type}: ${count}`);
+      }
+
       output = lines.join('\n');
     }
 
