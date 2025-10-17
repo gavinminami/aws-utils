@@ -28,4 +28,10 @@ export interface EC2InstanceInfo {
 
   /** Instance state (running, stopped, etc.) */
   state: string;
+
+  /** On-demand hourly price in USD */
+  hourlyPrice: number;
+
+  /** Estimated annual cost in USD (based on 24/7 on-demand pricing) */
+  annualCost: number;
 }

@@ -29,6 +29,8 @@ export function convertToCSV(instances: EC2InstanceInfo[]): string {
     'CPU Architecture',
     'RAM (GB)',
     'Disk Storage (GB)',
+    'Hourly Price (USD)',
+    'Annual Cost (USD)',
   ];
 
   // Create CSV rows
@@ -42,6 +44,8 @@ export function convertToCSV(instances: EC2InstanceInfo[]): string {
     escapeCsvField(instance.cpuArchitecture),
     escapeCsvField(instance.ramGB),
     escapeCsvField(instance.diskStorageGB),
+    escapeCsvField(instance.hourlyPrice.toFixed(4)),
+    escapeCsvField(instance.annualCost.toFixed(2)),
   ]);
 
   // Combine headers and rows

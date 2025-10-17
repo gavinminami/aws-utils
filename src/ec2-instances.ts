@@ -8,6 +8,7 @@ import {
   Filter,
 } from '@aws-sdk/client-ec2';
 import { EC2InstanceInfo } from './types';
+import { getInstancePricing, calculateAnnualCost } from './pricing';
 
 /**
  * Cache for instance type specifications
@@ -146,6 +147,10 @@ async function getInstancesInRegion(region: string): Promise<EC2InstanceInfo[]> 
             instance.InstanceId || ''
           );
 
+          // Get pricing information
+          const hourlyPrice = await getInstancePricing(region, instanceType);
+          const annualCost = calculateAnnualCost(hourlyPrice);
+
           instances.push({
             instanceId: instance.InstanceId || 'N/A',
             name: getInstanceName(instance),
@@ -156,6 +161,8 @@ async function getInstancesInRegion(region: string): Promise<EC2InstanceInfo[]> 
             ramGB: specs.ramGB,
             diskStorageGB,
             state: instance.State?.Name || 'unknown',
+            hourlyPrice,
+            annualCost,
           });
         }
       }

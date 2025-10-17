@@ -69,6 +69,8 @@ async function main() {
   CPU:          ${instance.cpuCount} vCPUs (${instance.cpuArchitecture})
   RAM:          ${instance.ramGB} GB
   Disk:         ${instance.diskStorageGB} GB
+  Hourly Cost:  $${instance.hourlyPrice.toFixed(4)}
+  Annual Cost:  $${instance.annualCost.toFixed(2)}
           `);
         }
       }
@@ -79,6 +81,14 @@ async function main() {
       lines.push(`Total vCPUs:         ${instances.reduce((sum, i) => sum + i.cpuCount, 0)}`);
       lines.push(`Total RAM:           ${instances.reduce((sum, i) => sum + i.ramGB, 0)} GB`);
       lines.push(`Total disk storage:  ${instances.reduce((sum, i) => sum + i.diskStorageGB, 0)} GB`);
+
+      // Calculate total costs
+      const totalAnnualCost = instances.reduce((sum, i) => sum + i.annualCost, 0);
+      const runningInstances = instances.filter(i => i.state === 'running');
+      const runningAnnualCost = runningInstances.reduce((sum, i) => sum + i.annualCost, 0);
+
+      lines.push(`\nEstimated annual cost (all instances):     $${totalAnnualCost.toFixed(2)}`);
+      lines.push(`Estimated annual cost (running only):      $${runningAnnualCost.toFixed(2)}`);
 
       // Count by state
       const stateCount = instances.reduce((acc, instance) => {
