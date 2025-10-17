@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-A TypeScript utility library for AWS-related functionality. Currently provides utilities for EC2 instance discovery and inventory across all AWS regions.
+A TypeScript utility library for AWS-related functionality. Currently provides utilities for EC2 instance discovery and inventory across all AWS regions with cost estimation.
+
+**For detailed usage instructions, installation, and examples, see [README.md](README.md).**
 
 ## Project Structure
 
@@ -14,18 +16,20 @@ aws-utils/
 │   ├── index.ts      # Main entry point (exports all utilities)
 │   ├── types.ts      # TypeScript interfaces and types
 │   ├── ec2-instances.ts  # EC2 instance discovery utilities
+│   ├── pricing.ts    # AWS pricing utilities
 │   ├── csv-utils.ts  # CSV formatting utilities
 │   └── utils.ts      # General utility functions
 ├── examples/         # Example usage scripts
 │   └── list-ec2-instances.ts  # Example: List all EC2 instances
 ├── tests/            # Test files
 ├── dist/             # Compiled JavaScript output (generated)
+├── README.md         # User documentation
 └── tsconfig.json     # TypeScript configuration
 ```
 
 ## Features
 
-### EC2 Instance Discovery
+### EC2 Instance Discovery with Cost Analysis
 
 The `getAllEC2Instances()` function retrieves comprehensive information about all EC2 instances across all enabled AWS regions:
 
@@ -35,8 +39,10 @@ The `getAllEC2Instances()` function retrieves comprehensive information about al
 - Total disk storage across all attached volumes (in GB)
 - Current instance state
 - Region location
+- On-demand hourly pricing
+- Estimated annual cost (24/7 operation)
 
-The function queries all enabled regions in parallel for optimal performance.
+The function queries all enabled regions in parallel for optimal performance and caches pricing data to minimize API calls.
 
 ## Development Setup
 
@@ -74,11 +80,12 @@ AWS credentials must be configured for the SDK to work. The SDK will automatical
 
 ### Required IAM Permissions
 
-For EC2 instance discovery:
+For EC2 instance discovery with pricing:
 - `ec2:DescribeRegions` - List all AWS regions
 - `ec2:DescribeInstances` - List EC2 instances
 - `ec2:DescribeInstanceTypes` - Get instance type specifications (CPU, RAM)
 - `ec2:DescribeVolumes` - Get volume information for disk storage
+- `pricing:GetProducts` - Get on-demand pricing information
 
 ## TypeScript Configuration
 
