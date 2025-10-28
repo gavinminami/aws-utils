@@ -35,3 +35,58 @@ export interface EC2InstanceInfo {
   /** Estimated annual cost in USD (based on 24/7 on-demand pricing) */
   annualCost: number;
 }
+
+/**
+ * Type of AWS resource using a security group
+ */
+export type SecurityGroupResourceType =
+  | 'EC2'
+  | 'RDS'
+  | 'LoadBalancer'
+  | 'Lambda'
+  | 'NetworkInterface'
+  | 'ElastiCache'
+  | 'Other';
+
+/**
+ * Information about a resource using a security group
+ */
+export interface SecurityGroupResource {
+  /** Type of resource */
+  resourceType: SecurityGroupResourceType;
+
+  /** Resource identifier (e.g., instance ID, DB identifier, LB ARN) */
+  resourceId: string;
+
+  /** Resource name if available */
+  resourceName?: string;
+
+  /** AWS region where the resource is located */
+  region: string;
+
+  /** Additional details about the resource */
+  details?: string;
+}
+
+/**
+ * Result of checking security group usage
+ */
+export interface SecurityGroupUsageResult {
+  /** The security group ID that was checked */
+  securityGroupId: string;
+
+  /** The security group name if available */
+  securityGroupName?: string;
+
+  /** VPC ID where the security group exists */
+  vpcId?: string;
+
+  /** Whether the security group is currently in use */
+  isInUse: boolean;
+
+  /** List of resources using this security group */
+  resources: SecurityGroupResource[];
+
+  /** Total count of resources using this security group */
+  totalCount: number;
+}

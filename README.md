@@ -4,12 +4,19 @@ A TypeScript utility library for AWS operations, providing comprehensive EC2 ins
 
 ## Features
 
+### EC2 Instance Discovery & Cost Analysis
 - 🌍 **Multi-Region Discovery** - Automatically discovers and queries all enabled AWS regions
 - 💰 **Cost Estimation** - Calculates on-demand pricing with hourly and annual cost estimates
 - 📊 **Multiple Output Formats** - Human-readable text or CSV export
 - 🚀 **High Performance** - Parallel region queries with built-in caching
 - 📄 **Complete Instance Details** - CPU, RAM, disk storage, state, and pricing information
 - 🔄 **Pagination Support** - Handles accounts with thousands of instances
+
+### Security Group Usage Checker
+- 🔍 **Usage Detection** - Check if a security group is being used by any AWS resources
+- 📋 **Resource Enumeration** - Lists all resources referencing a security group
+- 🎯 **Multi-Service Support** - Checks EC2, RDS, Lambda, Load Balancers, ElastiCache, and more
+- ⚠️ **Safe Deletion** - Verify security groups are unused before deletion
 
 ## Installation
 
@@ -45,6 +52,7 @@ When running on EC2, ECS, or Lambda, credentials are automatically obtained from
 
 Your AWS credentials need the following permissions:
 
+**For EC2 Instance Discovery:**
 ```json
 {
   "Version": "2012-10-17",
@@ -64,9 +72,36 @@ Your AWS credentials need the following permissions:
 }
 ```
 
+**For Security Group Usage Checker:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeInstances",
+        "ec2:DescribeNetworkInterfaces",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "lambda:ListFunctions",
+        "lambda:GetFunction",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeReplicationGroups"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
 ## Usage
 
-### Command Line
+### EC2 Instance Discovery
+
+**Command Line**
 
 **List all instances (human-readable format)**
 ```bash
@@ -90,7 +125,55 @@ npx tsx examples/list-ec2-instances.ts --csv | grep running
 npx tsx examples/list-ec2-instances.ts --csv > instances.csv
 ```
 
+### Security Group Usage Checker
+
+**Command Line**
+
+**Check if a security group is being used**
+```bash
+npx tsx examples/check-security-group-usage.ts sg-1234567890abcdef0
+```
+
+**Check in a specific region**
+```bash
+npx tsx examples/check-security-group-usage.ts sg-1234567890abcdef0 us-west-2
+```
+
+**Example Output**
+```
+Checking usage for security group: sg-1234567890abcdef0
+Region: us-east-1
+
+================================================================================
+Security Group: sg-1234567890abcdef0
+Name: web-server-sg
+VPC: vpc-0123456789abcdef0
+================================================================================
+
+✓ Security group IS IN USE by 3 resource(s):
+
+EC2 (2):
+  - i-0123456789abcdef0
+    Name: web-server-01
+    Instance Type: t3.medium, State: running
+    Region: us-east-1
+  - i-0123456789abcdef1
+    Name: web-server-02
+    Instance Type: t3.medium, State: running
+    Region: us-east-1
+
+LoadBalancer (1):
+  - arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234567890abcdef
+    Name: my-alb
+    Type: application, State: active
+    Region: us-east-1
+
+⚠️  WARNING: This security group is in use and should NOT be deleted.
+```
+
 ### Programmatic Usage
+
+**EC2 Instance Discovery**
 
 ```typescript
 import { getAllEC2Instances } from 'aws-utils';
@@ -111,6 +194,42 @@ async function main() {
   // Calculate total costs
   const totalAnnualCost = instances.reduce((sum, i) => sum + i.annualCost, 0);
   console.log(`\nTotal Annual Cost: $${totalAnnualCost.toFixed(2)}`);
+}
+
+main();
+```
+
+**Security Group Usage Checker**
+
+```typescript
+import { checkSecurityGroupUsage } from 'aws-utils';
+
+async function main() {
+  const result = await checkSecurityGroupUsage('sg-1234567890abcdef0', 'us-east-1');
+
+  if (result.isInUse) {
+    console.log(`Security group is used by ${result.totalCount} resources:`);
+
+    // Group and display by resource type
+    const byType = result.resources.reduce((acc, resource) => {
+      if (!acc[resource.resourceType]) {
+        acc[resource.resourceType] = [];
+      }
+      acc[resource.resourceType].push(resource);
+      return acc;
+    }, {} as Record<string, typeof result.resources>);
+
+    for (const [type, resources] of Object.entries(byType)) {
+      console.log(`\n${type} (${resources.length}):`);
+      resources.forEach(r => {
+        console.log(`  - ${r.resourceId} ${r.resourceName ? `(${r.resourceName})` : ''}`);
+      });
+    }
+
+    console.log('\n⚠️  Do not delete - security group is in use');
+  } else {
+    console.log('✓ Security group is safe to delete');
+  }
 }
 
 main();
@@ -196,7 +315,9 @@ i-0123456789abcdef1,app-server-01,us-east-1,m5.large,running,2,x86_64,8,50,0.096
 
 ## API Reference
 
-### `getAllEC2Instances(): Promise<EC2InstanceInfo[]>`
+### EC2 Instance Discovery
+
+#### `getAllEC2Instances(): Promise<EC2InstanceInfo[]>`
 
 Retrieves all EC2 instances across all enabled AWS regions.
 
@@ -241,6 +362,39 @@ Converts instance data to CSV format.
 - `instances` - Array of EC2InstanceInfo objects
 
 **Returns:** CSV formatted string
+
+### Security Group Usage Checker
+
+#### `checkSecurityGroupUsage(securityGroupId: string, region?: string): Promise<SecurityGroupUsageResult>`
+
+Checks if a security group is being used by AWS resources and lists all resources referencing it.
+
+**Parameters:**
+- `securityGroupId` - The security group ID to check (e.g., "sg-1234567890abcdef0")
+- `region` - AWS region to check (default: "us-east-1")
+
+**Returns:** SecurityGroupUsageResult object containing:
+- `securityGroupId` - The security group ID that was checked
+- `securityGroupName` - The security group name (if available)
+- `vpcId` - VPC ID where the security group exists
+- `isInUse` - Whether the security group is currently in use
+- `resources` - Array of SecurityGroupResource objects
+- `totalCount` - Total count of resources using the security group
+
+**Resources Checked:**
+- EC2 instances
+- Network interfaces (ENIs)
+- RDS instances and clusters
+- Load balancers (ALB, NLB, CLB)
+- Lambda functions in VPCs
+- ElastiCache clusters and replication groups
+
+**Example:**
+```typescript
+const result = await checkSecurityGroupUsage('sg-1234567890abcdef0', 'us-east-1');
+console.log(`In use: ${result.isInUse}`);
+console.log(`Total resources: ${result.totalCount}`);
+```
 
 ## Development
 

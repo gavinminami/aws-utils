@@ -2,6 +2,7 @@
 
 export * from './utils';
 export * from './ec2-instances';
+export * from './security-groups';
 export * from './types';
 export * from './csv-utils';
 export * from './pricing';
